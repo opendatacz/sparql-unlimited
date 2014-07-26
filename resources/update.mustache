@@ -1,0 +1,46 @@
+{{!
+@param Int           limit
+@param Int           offset
+@param String        ordering-variable
+@param String        source-pattern
+@param String        target-pattern
+@param Array<IRI>    using-iris
+@param Array<IRI>    using-named-iris
+@param Array<String> variables
+@param IRI           with-iri
+}}
+
+{{#with-iri}}
+WITH <{{with-iri}}>
+{{/with-iri}}
+INSERT {{{target-pattern}}}
+{{#using-iris}}
+USING <{{.}}>
+{{/using-iris}}
+{{#using-named-iris}}
+USING NAMED {{.}}
+{{/using-named-iris}}
+WHERE {
+  {
+    SELECT {{#ordering-variable}}
+           {{.}}
+           {{/ordering-variable}}
+           {{#variables}}
+           ?{{.}}
+           {{/variables}}
+    WHERE {
+      {
+        SELECT {{#ordering-variable}}
+               ?{{.}}
+               {{/ordering-variable}}
+               {{#variables}}
+               ?{{.}}
+               {{/variables}}
+        WHERE {{{source-pattern}}}
+        ORDER BY ASC(?{{ordering-variable}})
+      }
+    }
+    LIMIT {{limit}}
+    OFFSET {{offset}}
+  }
+}
