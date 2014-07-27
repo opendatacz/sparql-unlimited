@@ -18,10 +18,11 @@ java -jar sparql-unlimited.jar --help
 
 ## Known caveats
 
+* Only supports 1 update operation in a file.
 * Virtuoso doesn't enable to use `COUNT(DISTINCT *)`, even though it's valid SPARQL.
 
 ## License
 
 Copyright © 2014 Jindřich Mynarz
 
-Distributed under the Eclipse Public License either version 1.0.
+Distributed under the Eclipse Public License. 
