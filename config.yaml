@@ -1,0 +1,4 @@
+query-url: "URL of SPARQL 1.1 Query endpoint"
+update-url: "URL of SPARQL 1.1 Update endpoint"
+username: "Update endpoint's user name"
+password: "Update endpoint's password"
