@@ -16,4 +16,5 @@
                  [org.apache.jena/jena-core "2.11.1"]
                  [org.apache.jena/jena-arq "2.11.2"]
                  [intervox/clj-progress "0.1.1"]]
-  :main sparql-unlimited.core)
+  :main sparql-unlimited.core
+  :profiles {:uberjar {:aot :all}})
