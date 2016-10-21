@@ -1,5 +1,6 @@
 (ns sparql-unlimited.core
   (:gen-class)
+  (:refer-clojure :exclude [update])
   (:require [taoensso.timbre :as timbre]
             [clj-yaml.core :as yaml]
             [clojure.tools.cli :refer [parse-opts]]
@@ -8,13 +9,16 @@
             [clojure.xml :as xml]
             [clojure.data.zip.xml :as zip-xml]
             [clojure.zip :as zip]
+            [clojure.string :as string]
             [clj-progress.core :as progress])
-  (:import [com.hp.hpl.jena.update Update UpdateFactory]
-           [com.hp.hpl.jena.query Query]
-           [com.hp.hpl.jena.sparql.core Var]
-           [com.hp.hpl.jena.sparql.syntax ElementGroup ElementSubQuery PatternVars]
-           [com.hp.hpl.jena.sparql.expr ExprAggregator]
-           [com.hp.hpl.jena.sparql.expr.aggregate AggCount]))
+  (:import (java.util LinkedHashSet)
+           (java.net UnknownHostException)
+           (com.hp.hpl.jena.update Update UpdateFactory)
+           (com.hp.hpl.jena.query Query)
+           (com.hp.hpl.jena.sparql.core Var)
+           (com.hp.hpl.jena.sparql.syntax ElementGroup ElementSubQuery PatternVars)
+           (com.hp.hpl.jena.sparql.expr ExprAggregator)
+           (com.hp.hpl.jena.sparql.expr.aggregate AggCount)))
 
 (declare file-exists? get-quad-variables sparql-query)
 
@@ -42,6 +46,12 @@
   {:pre [(contains? #{0 1} status)]}
   (println message)
   (System/exit status))
+
+(def ^:private info
+  (partial exit 0))
+
+(def ^:private die
+  (partial exit 1))
 
 (defn file-exists?
   "Test if @file-path is an existing file."
@@ -100,7 +110,7 @@
 (defn get-paged-query
   "Return @sort-query wrapped in a query with paging using @limit and @offset."
   [^ElementSubQuery sort-query
-   ^java.util.LinkedHashSet variables
+   ^LinkedHashSet variables
    & {:keys [limit offset]}]
   {:pre [(instance? ElementSubQuery sort-query)
          (seq? variables)]}
@@ -169,11 +179,7 @@
         params {:accept accept 
                 :query-params {:query query-string}}]
     (timbre/debug (str "Sending SPARQL query:" \newline query-string))
-    (try
-      (:body (client/get query-url params))
-      (catch java.net.UnknownHostException e
-        (throw (java.net.UnknownHostException.
-                 (format "SPARQL endpoint %s doesn't exist." query-url)))))))
+    (:body (client/get query-url params))))
 
 (defn sparql-update
   "Execute SPARQL 1.1 @update-string using @sparql-endpoint."
@@ -182,17 +188,12 @@
         params {:digest-auth [username password]
                 :form-params {:update update-string}}]
     (timbre/info (str "Sending SPARQL update:" \newline update-string))
-    (try
-      (:body (client/post update-url params))
-      (catch java.net.UnknownHostException e
-        (throw (java.net.UnknownHostException.
-                 (format "SPARQL endpoint %s doesn't exist." update-url)))))))
+    (:body (client/post update-url params))))
 
 (defn sparql-update-unlimited
   "Execute SPARQL Update operation from @update-file-path using @sparql-endpoint
   by splitting the operation in pages of size @page-size."
-  [sparql-endpoint update-file-path & {:keys [page-size]
-                                       :or {page-size 1000}}]
+  [sparql-endpoint update-file-path & {:keys [page-size]}]
   (let [update (parse-update update-file-path)
         results-count (->> (get-count-query update)
                            (select-query sparql-endpoint)
@@ -207,7 +208,7 @@
                                                                      :offset offset)))))
         paged-query-fn (fn [offset] (sparql-update sparql-endpoint (render-query-fn offset)))]
     (progress/init "Executing paged SPARQL Update"
-                   (int (java.lang.Math/ceil (/ results-count page-size))))
+                   (int (Math/ceil (/ results-count page-size))))
     (doseq [offset (iterate (partial + page-size) 0)
             :while (> results-count offset)]
       (do (paged-query-fn offset)
@@ -218,8 +219,8 @@
   [& args]
   (let [{{:keys [config help log page update]} :options
          :keys [errors summary]} (parse-opts args cli-options)]
-    (cond help (exit 0 (usage summary))
-          errors (exit 1 (clojure.string/join \newline errors))
+    (cond help (info (usage summary))
+          errors (die (string/join \newline errors))
           :else (let [sparql-endpoint (load-config config)]
                   (do (init-logger (not (nil? log)))
                       (init-progress-bar)
@@ -227,5 +228,5 @@
                         (sparql-update-unlimited sparql-endpoint
                                                  update
                                                  :page-size page)
-                        (catch java.net.UnknownHostException e
-                          (exit 1 (.getMessage e)))))))))
+                        (catch UnknownHostException e
+                          (die (.getMessage e)))))))))

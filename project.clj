@@ -1,4 +1,4 @@
-(defproject sparql-unlimited "0.1.0-SNAPSHOT"
+(defproject sparql-unlimited "0.5.0"
   :description "Executing SPARQL updates using paging."
   :url "http://github.com/opendatacz/sparql-unlimited"
   :license {:name "Eclipse Public License"
@@ -17,4 +17,5 @@
                  [org.apache.jena/jena-arq "2.11.2"]
                  [intervox/clj-progress "0.1.1"]]
   :main sparql-unlimited.core
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:uberjar {:aot :all
+                       :uberjar-name "sparql_unlimited.jar"}})
